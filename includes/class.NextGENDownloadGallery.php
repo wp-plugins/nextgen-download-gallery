@@ -249,6 +249,7 @@ class NextGENDownloadGallery {
 	* @return string
 	*/
 	public static function getTitleFromTaglist($taglist) {
+		/* translators: gallery title when it has been created from image tags */
 		$title = sprintf(__('tagged: %s', 'nextgen-download-gallery'), $taglist);
 
 		return apply_filters('ngg_dlgallery_tags_gallery_title', $title, $taglist);
@@ -329,7 +330,7 @@ class NextGENDownloadGallery {
 	public static function getDownloadAllId($gallery) {
 		if (defined('NEXTGEN_GALLERY_PLUGIN_VERSION')) {
 			// NextGEN Gallery 2 virtual gallery
-			$id = $gallery->displayed_gallery->transient_id;
+			$id = $gallery->displayed_gallery->id();
 		}
 		else {
 			// legacy plugin
@@ -517,6 +518,32 @@ class NextGENDownloadGallery {
 	public static function adminInit() {
 		add_settings_section(NGG_DLGALL_OPTIONS, false, false, NGG_DLGALL_OPTIONS);
 		register_setting(NGG_DLGALL_OPTIONS, NGG_DLGALL_OPTIONS, array(__CLASS__, 'settingsValidate'));
+
+		// in_plugin_update_message isn't supported on multisite != blog-1, so just add another row
+		if (current_user_can('update_plugins')) {
+			add_action('after_plugin_row_' . NGG_DLGALL_PLUGIN_NAME, array(__CLASS__, 'upgradeMessage'), 20, 2);
+		}
+	}
+
+	/**
+	* show upgrade messages on Plugins admin page
+	* @param string $file
+	* @param object $current_meta
+	*/
+	public function upgradeMessage($file, $plugin_data) {
+		$current = get_site_transient('update_plugins');
+
+		if (isset($current->response[$file])) {
+			$r = $current->response[$file];
+
+			if (!empty($r->upgrade_notice)) {
+				$wp_list_table = _get_list_table('WP_Plugins_List_Table');
+				$colspan = $wp_list_table->get_column_count();
+				$plugin_name = wp_kses($plugin_data['Name'], 'strip');
+
+				require NGG_DLGALL_PLUGIN_ROOT . 'views/admin-upgrade-message.php';
+			}
+		}
 	}
 
 	/**
@@ -527,7 +554,7 @@ class NextGENDownloadGallery {
 			$links[] = sprintf('<a href="https://wordpress.org/support/plugin/nextgen-download-gallery" target="_blank">%s</a>', _x('Get help', 'plugin details links', 'nextgen-download-gallery'));
 			$links[] = sprintf('<a href="https://wordpress.org/plugins/nextgen-download-gallery/" target="_blank">%s</a>', _x('Rating', 'plugin details links', 'nextgen-download-gallery'));
 			$links[] = sprintf('<a href="https://translate.webaware.com.au/projects/nextgen-download-gallery" target="_blank">%s</a>', _x('Translate', 'plugin details links', 'nextgen-download-gallery'));
-			$links[] = sprintf('<a href="http://shop.webaware.com.au/downloads/nextgen-download-gallery/" target="_blank">%s</a>', _x('Donate', 'plugin details links', 'nextgen-download-gallery'));
+			$links[] = sprintf('<a href="http://shop.webaware.com.au/donations/?donation_for=NextGEN+Download+Gallery" target="_blank">%s</a>', _x('Donate', 'plugin details links', 'nextgen-download-gallery'));
 		}
 
 		return $links;
